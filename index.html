@@ -2,116 +2,43 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JS 테트리스 - 닉네임 시스템</title>
+    <title>JS 테트리스 최종판</title>
     <style>
-        body {
-            background: #1a1a1e;
-            color: #fff;
-            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-        }
-
-        /* 1. 닉네임 입력 창 (시작 화면) */
-        #start-screen {
-            text-align: center;
-            background: #2a2a2e;
-            padding: 50px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            z-index: 100;
-        }
-
-        #start-screen h1 { color: #0DC2FF; margin-bottom: 30px; font-size: 40px; }
-
-        input {
-            padding: 15px;
-            font-size: 18px;
-            width: 250px;
-            border: 2px solid #444;
-            border-radius: 8px;
-            background: #1a1a1e;
-            color: #fff;
-            margin-bottom: 25px;
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
-            text-align: center;
-        }
-
-        input:focus { border-color: #0DFF72; outline: none; }
-
-        button {
-            padding: 15px 40px;
-            font-size: 20px;
-            background: #0DFF72;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            color: #1a1a1e;
-            transition: 0.3s;
-        }
-
-        button:hover { background: #0bc95b; transform: translateY(-2px); }
-
-        /* 2. 게임 화면 (처음엔 숨김) */
-        #game-layout {
-            display: none; /* 핵심: 처음엔 보이지 않음 */
-            position: relative;
-            border: 5px solid #333;
-            background: #000;
-        }
-
-        canvas { display: block; }
-
-        .side-panel {
-            position: absolute;
-            top: 0;
-            right: -200px;
-            width: 180px;
-            padding: 20px;
-            background: #2a2a2e;
-            border-radius: 0 10px 10px 0;
-        }
-
-        .player-tag { font-size: 22px; color: #0DC2FF; font-weight: bold; margin-bottom: 10px; border-bottom: 2px solid #444; padding-bottom: 5px; }
-        .score-text { font-size: 26px; color: #FFE138; }
-        .controls-info { font-size: 13px; color: #aaa; margin-top: 30px; line-height: 1.8; }
+        body { background: #1a1a1e; color: #fff; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        
+        /* 시작 화면 */
+        #start-screen { text-align: center; background: #2a2a2e; padding: 50px; border-radius: 20px; z-index: 100; display: block; }
+        
+        /* 게임 화면 (기본적으로 숨김 상태) */
+        #game-layout { display: none; position: relative; border: 5px solid #333; }
+        
+        input { padding: 15px; font-size: 18px; width: 250px; margin-bottom: 20px; border-radius: 8px; border: none; text-align: center; }
+        button { padding: 15px 40px; font-size: 20px; background: #0DFF72; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        
+        canvas { background: #000; display: block; }
+        .side-panel { position: absolute; top: 0; right: -200px; width: 180px; padding: 20px; background: #2a2a2e; border-radius: 10px; }
     </style>
 </head>
 <body>
 
     <div id="start-screen">
         <h1>TETRIS</h1>
-        <input type="text" id="nameInput" placeholder="닉네임을 입력하세요" maxlength="10">
-        <button id="startBtn">게임 시작</button>
+        <input type="text" id="nameInput" placeholder="닉네임을 입력하세요">
+        <br>
+        <button id="startBtn">게임 시작하기</button>
     </div>
 
     <div id="game-layout">
         <canvas id="tetris" width="240" height="400"></canvas>
         <div class="side-panel">
-            <div id="pName" class="player-tag">PLAYER</div>
-            <div class="score-text">Score: <span id="score">0</span></div>
-            <div class="controls-info">
-                <b>조작 가이드:</b><br>
-                ← → : 이동<br>
-                ↑ : 블록 회전<br>
-                ↓ : 천천히 내리기<br>
-                Space : 바로 내리기
-            </div>
+            <div id="pName" style="color:#0DC2FF; font-weight:bold; font-size:20px;"></div>
+            <div style="font-size:24px;">Score: <span id="score">0</span></div>
         </div>
     </div>
 
     <script>
         const canvas = document.getElementById('tetris');
         const context = canvas.getContext('2d');
-        const scoreElement = document.getElementById('score');
         const nameInput = document.getElementById('nameInput');
         const startBtn = document.getElementById('startBtn');
         const startScreen = document.getElementById('start-screen');
@@ -120,10 +47,28 @@
 
         context.scale(20, 20);
 
-        // 블록 색상 및 모양 데이터
         const colors = [null, '#FF0D72', '#0DC2FF', '#0DFF72', '#F538FF', '#FF8E0D', '#FFE138', '#3877FF'];
         const arena = Array.from({length: 20}, () => new Array(12).fill(0));
         const player = { pos: {x: 0, y: 0}, matrix: null, score: 0 };
+
+        // 시작 버튼 이벤트 리스너 (이 부분이 화면을 전환함)
+        startBtn.onclick = function() {
+            const nick = nameInput.value.trim();
+            if (nick === "") {
+                alert("이름을 꼭 입력해 주세요!");
+                return;
+            }
+            
+            console.log("게임 시작 요청됨:", nick); // 확인용 로그
+            pNameDisplay.innerText = nick;
+            
+            // 핵심: CSS의 display 속성을 직접 변경
+            startScreen.style.setProperty('display', 'none', 'important');
+            gameLayout.style.setProperty('display', 'block', 'important');
+            
+            playerReset();
+            update();
+        };
 
         function createPiece(type) {
             if (type === 'I') return [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]];
@@ -148,9 +93,6 @@
                     if (value !== 0) {
                         context.fillStyle = colors[value];
                         context.fillRect(x + offset.x, y + offset.y, 1, 1);
-                        context.lineWidth = 0.05;
-                        context.strokeStyle = 'white';
-                        context.strokeRect(x + offset.x, y + offset.y, 1, 1);
                     }
                 });
             });
@@ -174,26 +116,6 @@
             });
         }
 
-        function rotate(matrix, dir) {
-            for (let y = 0; y < matrix.length; ++y) {
-                for (let x = 0; x < y; ++x) [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
-            }
-            if (dir > 0) matrix.forEach(row => row.reverse()); else matrix.reverse();
-        }
-
-        function arenaSweep() {
-            let rowCount = 1;
-            outer: for (let y = arena.length - 1; y > 0; --y) {
-                for (let x = 0; x < arena[y].length; ++x) { if (arena[y][x] === 0) continue outer; }
-                const row = arena.splice(y, 1)[0].fill(0);
-                arena.unshift(row);
-                ++y;
-                player.score += rowCount * 10;
-                rowCount *= 2;
-            }
-            scoreElement.innerText = player.score;
-        }
-
         function playerDrop() {
             player.pos.y++;
             if (collide(arena, player)) {
@@ -211,11 +133,24 @@
             player.pos.y = 0;
             player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
             if (collide(arena, player)) {
-                alert("GAME OVER! " + pNameDisplay.innerText + "님의 점수: " + player.score);
+                alert("게임 오버!");
                 arena.forEach(row => row.fill(0));
                 player.score = 0;
-                scoreElement.innerText = 0;
+                document.getElementById('score').innerText = 0;
             }
+        }
+
+        function arenaSweep() {
+            let rowCount = 1;
+            outer: for (let y = arena.length - 1; y > 0; --y) {
+                for (let x = 0; x < arena[y].length; ++x) { if (arena[y][x] === 0) continue outer; }
+                const row = arena.splice(y, 1)[0].fill(0);
+                arena.unshift(row);
+                ++y;
+                player.score += rowCount * 10;
+                rowCount *= 2;
+            }
+            document.getElementById('score').innerText = player.score;
         }
 
         let dropCounter = 0;
@@ -229,44 +164,11 @@
             requestAnimationFrame(update);
         }
 
-        // --- 핵심: 게임 전환 함수 ---
-        function handleStart() {
-            const name = nameInput.value.trim();
-            if (name === "") {
-                alert("닉네임을 입력해 주세요!");
-                return;
-            }
-            pNameDisplay.innerText = name;
-            startScreen.style.display = 'none'; // 시작 화면 숨김
-            gameLayout.style.display = 'block'; // 게임 화면 표시
-            playerReset();
-            update();
-        }
-
-        // 마우스 클릭 시 시작
-        startBtn.addEventListener('click', handleStart);
-
-        // 입력창에서 엔터키 눌렀을 때 시작
-        nameInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleStart();
-        });
-
-        // 조작 이벤트
         document.addEventListener('keydown', event => {
-            if (gameLayout.style.display === 'block') {
-                if (event.keyCode === 37) { player.pos.x--; if(collide(arena, player)) player.pos.x++; }
-                else if (event.keyCode === 39) { player.pos.x++; if(collide(arena, player)) player.pos.x--; }
-                else if (event.keyCode === 40) { playerDrop(); }
-                else if (event.keyCode === 38) { 
-                    const pos = player.pos.x;
-                    rotate(player.matrix, 1);
-                    if(collide(arena, player)) { rotate(player.matrix, -1); player.pos.x = pos; }
-                }
-                else if (event.keyCode === 32) {
-                    while(!collide(arena, player)) { player.pos.y++; }
-                    player.pos.y--; playerDrop();
-                }
-            }
+            if (event.keyCode === 37) { player.pos.x--; if(collide(arena, player)) player.pos.x++; }
+            else if (event.keyCode === 39) { player.pos.x++; if(collide(arena, player)) player.pos.x--; }
+            else if (event.keyCode === 40) { playerDrop(); }
+            else if (event.keyCode === 32) { while(!collide(arena, player)) { player.pos.y++; } player.pos.y--; playerDrop(); }
         });
     </script>
 </body>
