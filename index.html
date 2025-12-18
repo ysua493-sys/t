@@ -2,11 +2,12 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JS 테트리스 - 하이코어 시스템</title>
+    <title>Under the Sea Tetris</title>
     <style>
         body {
-            background: #1a1a1e;
+            /* 기본 바다 배경 */
+            background: url('https://images.unsplash.com/photo-1551244072-5d12893278ab?q=80&w=2000') no-repeat center center fixed;
+            background-size: cover;
             color: #fff;
             font-family: 'Segoe UI', sans-serif;
             display: flex;
@@ -15,98 +16,95 @@
             height: 100vh;
             margin: 0;
             overflow: hidden;
+            transition: all 0.8s ease; /* 배경 전환 효과 */
         }
 
-        /* 시작 및 닉네임 입력 화면 */
+        /* 50점마다 적용될 효과 클래스 */
+        .deep-sea {
+            filter: hue-rotate(20deg) brightness(0.7) contrast(1.2);
+            box-shadow: inset 0 0 200px rgba(0, 50, 100, 0.8);
+        }
+
         #overlay {
             position: absolute;
-            background: rgba(20, 20, 25, 0.95);
+            background: rgba(0, 30, 60, 0.85);
             padding: 40px;
             border-radius: 20px;
             text-align: center;
-            box-shadow: 0 0 30px rgba(0,0,0,0.7);
+            backdrop-filter: blur(10px);
+            border: 2px solid #0DC2FF;
             z-index: 10;
         }
 
         input {
-            padding: 12px;
-            font-size: 18px;
-            border-radius: 8px;
-            border: none;
-            margin-bottom: 20px;
-            width: 200px;
-            text-align: center;
+            padding: 12px; font-size: 18px; border-radius: 8px; border: none;
+            margin-bottom: 20px; width: 200px; text-align: center;
         }
 
         button {
-            padding: 12px 30px;
-            font-size: 18px;
-            background: #0DFF72;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
+            padding: 12px 30px; font-size: 18px; background: #0DFF72;
+            border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
         }
 
-        /* 게임 화면 레이아웃 */
         #game-container {
-            display: none; /* 시작 전엔 숨김 */
+            display: none;
             position: relative;
-            border: 4px solid #fff;
+            border: 8px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: rgba(0, 10, 30, 0.6); /* 캔버스 배경 살짝 투명하게 */
         }
 
-        canvas {
-            display: block;
-            background-color: #000;
-        }
+        canvas { display: block; }
 
         .ui {
             position: absolute;
-            top: 0;
-            right: -180px;
-            width: 160px;
-            text-align: left;
+            top: 0; right: -200px; width: 180px;
         }
 
         .info-box {
-            margin-bottom: 20px;
-            background: #2a2a35;
-            padding: 10px;
-            border-radius: 8px;
+            margin-bottom: 15px;
+            background: rgba(0, 50, 100, 0.7);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #0DC2FF;
         }
 
-        .label { font-size: 12px; color: #aaa; text-transform: uppercase; }
-        .value { font-size: 20px; font-weight: bold; color: #0DC2FF; }
-        #best-score { color: #FFE138; }
+        .label { font-size: 11px; color: #0DC2FF; }
+        .value { font-size: 22px; font-weight: bold; }
+        
+        /* 점수가 튈 때 애니메이션 */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); background: rgba(0, 255, 150, 0.5); }
+            100% { transform: scale(1); }
+        }
+        .score-up { animation: pulse 0.5s ease; }
     </style>
 </head>
 <body>
 
     <div id="overlay">
-        <h1>TETRIS</h1>
-        <p id="high-score-msg">최고 기록에 도전하세요!</p>
+        <h1 style="color:#0DC2FF; text-shadow: 0 0 10px #000;">SEA TETRIS</h1>
+        <p id="high-score-msg" style="color:#FFE138;">최고 점수를 기록해보세요!</p>
         <input type="text" id="nickname" placeholder="닉네임 입력" maxlength="8">
         <br>
-        <button onclick="startGame()">게임 시작</button>
+        <button onclick="startGame()">잠수 시작</button>
     </div>
 
     <div id="game-container">
         <canvas id="tetris" width="240" height="400"></canvas>
         <div class="ui">
             <div class="info-box">
-                <div class="label">Player</div>
+                <div class="label">DIVER</div>
                 <div id="display-name" class="value">-</div>
             </div>
-            <div class="info-box">
-                <div class="label">Score</div>
+            <div class="info-box" id="score-container">
+                <div class="label">SCORE</div>
                 <div id="score" class="value">0</div>
             </div>
             <div class="info-box">
-                <div class="label">Best</div>
-                <div id="best-score" class="value">0</div>
-            </div>
-            <div style="font-size: 12px; color: #666;">
-                ←→ 이동 / ↑ 회전 / ↓ 낙하<br>Space 즉시 낙하
+                <div class="label">BEST RECORD</div>
+                <div id="best-score" class="value" style="color:#FFE138;">0</div>
             </div>
         </div>
     </div>
@@ -115,18 +113,44 @@
         const canvas = document.getElementById('tetris');
         const context = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
-        const bestElement = document.getElementById('best-score');
-        const displayName = document.getElementById('display-name');
+        const scoreContainer = document.getElementById('score-container');
         
         context.scale(20, 20);
 
-        // --- 데이터 관리 (최고 점수 불러오기) ---
         let highScore = localStorage.getItem('tetrisHighScore') || 0;
         let highName = localStorage.getItem('tetrisHighName') || 'None';
-        bestElement.innerText = highScore;
-        if(highScore > 0) document.getElementById('high-score-msg').innerText = `최고 기록: ${highName} (${highScore}점)`;
+        document.getElementById('best-score').innerText = highScore;
 
-        // --- 게임 엔진 ---
+        const colors = [null, '#00f2ff', '#0077ff', '#00ffaa', '#5500ff', '#ffaa00', '#ffff00', '#ff0055'];
+        const arena = Array.from({length: 20}, () => new Array(12).fill(0));
+        const player = { pos: {x: 0, y: 0}, matrix: null, score: 0, nickname: '' };
+
+        // --- 50점 마다 배경 변화 체크 ---
+        let lastBackgroundMilestone = 0;
+
+        function updateScoreUI() {
+            scoreElement.innerText = player.score;
+            
+            // 50점 단위 체크
+            if (player.score > 0 && Math.floor(player.score / 50) > lastBackgroundMilestone) {
+                lastBackgroundMilestone = Math.floor(player.score / 50);
+                triggerSeaEffect();
+            }
+        }
+
+        function triggerSeaEffect() {
+            // 전체 화면 효과 부여
+            document.body.classList.add('deep-sea');
+            scoreContainer.classList.add('score-up');
+            
+            // 2초 뒤에 원래대로 (또는 계속 유지하고 싶으면 제거X)
+            setTimeout(() => {
+                document.body.classList.remove('deep-sea');
+                scoreContainer.classList.remove('score-up');
+            }, 1500);
+        }
+
+        // 테트리스 로직 (생략 없이 통합)
         function arenaSweep() {
             let rowCount = 1;
             outer: for (let y = arena.length - 1; y > 0; --y) {
@@ -139,7 +163,7 @@
                 player.score += rowCount * 10;
                 rowCount *= 2;
             }
-            updateScore();
+            updateScoreUI();
         }
 
         function collide(arena, player) {
@@ -150,10 +174,6 @@
                 }
             }
             return false;
-        }
-
-        function createMatrix(w, h) {
-            return Array.from({length: h}, () => new Array(w).fill(0));
         }
 
         function createPiece(type) {
@@ -167,8 +187,7 @@
         }
 
         function draw() {
-            context.fillStyle = '#000';
-            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.clearRect(0, 0, canvas.width, canvas.height); // 배경 투명을 위해 clear 사용
             drawMatrix(arena, {x: 0, y: 0});
             drawMatrix(player.matrix, player.pos);
         }
@@ -179,8 +198,8 @@
                     if (value !== 0) {
                         context.fillStyle = colors[value];
                         context.fillRect(x + offset.x, y + offset.y, 1, 1);
+                        context.strokeStyle = 'rgba(255,255,255,0.3)';
                         context.lineWidth = 0.05;
-                        context.strokeStyle = 'white';
                         context.strokeRect(x + offset.x, y + offset.y, 1, 1);
                     }
                 });
@@ -195,65 +214,29 @@
             });
         }
 
-        function rotate(matrix, dir) {
-            for (let y = 0; y < matrix.length; ++y) {
-                for (let x = 0; x < y; ++x) [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
-            }
-            if (dir > 0) matrix.forEach(row => row.reverse()); else matrix.reverse();
-        }
-
-        function playerDrop() {
-            player.pos.y++;
-            if (collide(arena, player)) {
-                player.pos.y--;
-                merge(arena, player);
-                playerReset();
-                arenaSweep();
-                updateScore();
-            }
-            dropCounter = 0;
-        }
-
         function playerReset() {
             const pieces = 'ILJOTSZ';
             player.matrix = createPiece(pieces[pieces.length * Math.random() | 0]);
             player.pos.y = 0;
             player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
-            
             if (collide(arena, player)) {
-                // 게임 종료 시 최고 점수 저장 로직
                 if (player.score > highScore) {
                     localStorage.setItem('tetrisHighScore', player.score);
                     localStorage.setItem('tetrisHighName', player.nickname);
-                    alert(`최고 기록 갱신! ${player.score}점`);
-                } else {
-                    alert(`게임 오버! 점수: ${player.score}`);
                 }
-                location.reload(); // 페이지 새로고침하여 초기화
+                alert("잠수 종료! 최종 점수: " + player.score);
+                location.reload();
             }
         }
 
-        function updateScore() {
-            scoreElement.innerText = player.score;
-        }
-
-        // --- 초기화 및 시작 ---
-        const colors = [null, '#FF0D72', '#0DC2FF', '#0DFF72', '#F538FF', '#FF8E0D', '#FFE138', '#3877FF'];
-        const arena = createMatrix(12, 20);
-        const player = { pos: {x: 0, y: 0}, matrix: null, score: 0, nickname: '' };
-
         function startGame() {
-            const nickInput = document.getElementById('nickname').value;
-            if (!nickInput) { alert('닉네임을 입력해주세요!'); return; }
-            
-            player.nickname = nickInput;
-            displayName.innerText = nickInput;
-            
+            const nick = document.getElementById('nickname').value;
+            if (!nick) return alert('닉네임을 입력해주세요!');
+            player.nickname = nick;
+            document.getElementById('display-name').innerText = nick;
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('game-container').style.display = 'block';
-            
             playerReset();
-            updateScore();
             update();
         }
 
@@ -263,7 +246,7 @@
             const deltaTime = time - lastTime;
             lastTime = time;
             dropCounter += deltaTime;
-            if (dropCounter > 1000) playerDrop();
+            if (dropCounter > 1000) { player.pos.y++; if(collide(arena, player)){ player.pos.y--; merge(arena, player); playerReset(); arenaSweep(); } dropCounter = 0; }
             draw();
             requestAnimationFrame(update);
         }
@@ -271,15 +254,13 @@
         document.addEventListener('keydown', event => {
             if (event.keyCode === 37) { player.pos.x--; if(collide(arena, player)) player.pos.x++; }
             else if (event.keyCode === 39) { player.pos.x++; if(collide(arena, player)) player.pos.x--; }
-            else if (event.keyCode === 40) { playerDrop(); }
+            else if (event.keyCode === 40) { player.pos.y++; if(collide(arena, player)) player.pos.y--; dropCounter = 0; }
             else if (event.keyCode === 38) { 
-                const pos = player.pos.x;
-                rotate(player.matrix, 1);
-                if(collide(arena, player)) { rotate(player.matrix, -1); player.pos.x = pos; }
-            }
-            else if (event.keyCode === 32) {
-                while(!collide(arena, player)) { player.pos.y++; }
-                player.pos.y--; playerDrop();
+                const oldX = player.pos.x;
+                const m = player.matrix;
+                for (let y = 0; y < m.length; ++y) { for (let x = 0; x < y; ++x) [m[x][y], m[y][x]] = [m[y][x], m[x][y]]; }
+                m.forEach(row => row.reverse());
+                if(collide(arena, player)) { m.forEach(row => row.reverse()); for (let y = 0; y < m.length; ++y) { for (let x = 0; x < y; ++x) [m[x][y], m[y][x]] = [m[y][x], m[x][y]]; } player.pos.x = oldX; }
             }
         });
     </script>
